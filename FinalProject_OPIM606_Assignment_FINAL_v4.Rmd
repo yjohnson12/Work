@@ -1,0 +1,606 @@
+---
+title: "Final Project"
+author: "Yusuke Johnson, Manuel Jean, Carly Brennan"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r, include = FALSE}
+library(tidyverse)
+library(readxl)
+library(lubridate)
+library("orcutt")
+library(knitr)
+library(dplyr)
+library(xlsx)
+library(ggplot2)
+library(conflicted)
+library(sjPlot)
+
+options(scipen=999)
+
+#conflict_prefer("filter", "dplyr")
+knitr::opts_chunk$set(cache=TRUE,message=FALSE, warning=FALSE)
+
+opts_knit$set(root.dir = "C:/Users/yusuk/OneDrive/Documents/OPIM606-100/Final_Project")
+```
+
+
+```{r, include = FALSE}
+
+df <- read.csv("stocks2020.csv")
+p <- read.csv("USPres_2020_Price+History+By+Market+-Bulk.csv")
+
+trump <- p %>%
+dplyr::filter(date >= 20200102 & date <= 20201230)%>%
+dplyr::filter(Contract.Name == "Donald Trump") %>%
+rename(trump.Contract.Name = Contract.Name) %>%
+rename(trump.open = Open.Share.Price) %>%
+rename(trump.close = Close.Share.Price) %>%
+rename(trump.lowest = Low.Share.Price) %>%
+rename(trump.highest = High.Share.Price) %>%
+rename(trump.avg = Average.Trade.Price) %>%
+rename(trump.vol = Trade.Volume) 
+  
+head(trump)
+
+joint_df <- left_join(df,trump, by=c("date" = "date"))
+head(joint_df)
+```
+
+
+
+```{r, include = FALSE}
+biden <- p %>%
+  dplyr::filter(date >= 20200102 & date <= 20201230) %>%
+  dplyr::filter(Contract.Name == "Joe Biden") %>%
+  rename(biden.Contract.Name = Contract.Name) %>%
+  rename(biden.open = Open.Share.Price) %>%
+  rename(biden.close = Close.Share.Price) %>%
+  rename(biden.lowest = Low.Share.Price) %>%
+  rename(biden.highest = High.Share.Price) %>%
+  rename(biden.avg = Average.Trade.Price) %>%
+  rename(biden.vol = Trade.Volume) 
+head(biden)
+
+#Join data set
+joint_df2 <- left_join(joint_df,biden, by=c("date" = "date"))
+joint_df2 <- joint_df2 %>%
+  dplyr::filter(DJI != 0)
+
+#Change trump.vol and biden.vol from character to numeric 
+# parse out the comma to turn it into a numeric 
+joint_df2$trump.vol <- as.numeric(gsub(",","",joint_df2$trump.vol))
+joint_df2$biden.vol <- as.numeric(gsub(",","",joint_df2$biden.vol))
+
+
+
+
+#write.xlsx(joint_df2, "Joint_DF.xlsx", sheetName = "Sheet1", col.names = TRUE, row.names = TRUE, append = FALSE)
+```
+
+```{r, include = FALSE}
+#Remove some columns, perform cleanup
+joint_df2 <- joint_df2 %>% 
+  select(-Contract.ID.x)%>% 
+  select(-Contract.ID.y) %>%
+  select(-Market.Name.x) %>% 
+  select(-Market.Name.y) %>% 
+  select(-Market.ID.x) %>% 
+  select(-Market.ID.y) %>% 
+  select(-trump.Contract.Name) %>%
+  select(-biden.Contract.Name)%>% 
+  select(-M.x)%>% 
+  select(-X.x)%>% 
+  select(-Y.x)%>% 
+  select(-D.x)%>% 
+  select(-M.y) %>% 
+  select(-X.y)%>% 
+  select(-Y.y) %>% 
+  select(-D.y) %>%
+  select(-D.1.x) %>%
+  select(-X.1.x) %>%
+  select(-D.1.y) %>%
+  select(-X.1.y) %>%
+   select(-D) %>%
+   select(-M) %>%
+   select(-X) %>%
+   select(-Y)
+
+
+na.omit(joint_df2)
+```
+
+<p style="font-family: times, serif; font-size:20pt; font-style:italic">
+    Recommendation: 
+</p>
+
+
+  Overall, 2020 was a turbulent year due to multitude of incidents and factors. As shown in Figure 1, many of the major market movements (up and down) can be explained by some of the pivotal events that took place in the year (please see below). Contrary to the team’s initial findings, after adjusting for autocorrelation, the team identified eight securities that are sensitive to the presidential election.  
+
+  Both candidates exhibited significant relationships with numerous companies. President Donald Trump’s probability to win the re-election had a strong connection to the share price of both Facebook (FB) and Walmart Inc (WMT). Conversely, Vice President Joe Biden showed a strong relationship to United Health Group, Inc (UNH) and Canopy Growth Corp (CGC) due to the platform he had presented leading up to the election. The most interesting companies that shared significance with both candidates include Next Era Energy, Inc (NEE), Geo Group Inc (GEO), Bank of America (BAC), and Martin Marietta Materials, Inc (MLM). These four companies are the most intriguing as they are significant toward both candidates simultaneously. 
+
+  Nonetheless, the team has concluded that a portion of companies on the US stock market is affected by global events and politics in general. Overall, as the probability of Vice President Joe Biden increased, the market ascended in a similar fashion (Figure 4).
+  
+
+<p style="font-family: times, serif; font-size:20pt; font-style:italic">
+  Overview:  
+</p>
+
+  The year 2020 marked a momentous year for this nation’s history. Not only was there a - highly polarizing - presidential election, but multiple human-rights movements domestically/internationally, and more importantly, an international pandemic took place. Historically, presidential elections are marked as major catalysts for market movement. As each candidate carries unique ideologies and methodologies, they can have astronomical influence on the individual “values” of a stock. For instance, when the presidency transitioned from President George W. Bush to Barack Obama, the value of solar/EV (i.e., Tesla) related stocks skyrocketed in valuation. This is simply due to President Barack Obama’s heavy emphasis in reducing greenhouse emissions and becoming a global leader in solar energy. In addition to the political factors, a social revolution took place in 2020 that affected the capital markets. This includes civil unrests and protests across the globe that affected market certainty. Lastly, the year 2020 endured a pandemic that caused the entire planet to cease. Consequently, the world suffered supply and demand-related issues that affected the near-future outlook of the global economy.    
+
+  In this study, the Georgetown team analyzed the effects of politics / political event(s) on the US stock market. The team is specifically looking at Vice President Joe Biden and President 	Donald Trump’s election probability from 2020. The team hypothesized that most companies	(as they are incorporated in the DJIA) will have a positive relationship with a candidate’s election/re-election probability. The team also hypothesized that the stock market will benefit when the winner of general election becomes evident. 
+
+<p style="font-family: times, serif; font-size:20pt; font-style:italic">
+  DJI (2020):
+</p>
+
+
+  The first dataset the team analyzed was simply the DOW in the year 2020. As mentioned before, many significant events occurred that year and consequently had an effect on the capital markets. As shown below, the DOW started off with a steep decline due to COVID-19 scares and subsequently ascended. Throughout that ascension, there were many market-moving events including, but not limited to: 
+
+  [1] The first case of COVID-19 in the US (01/21) 
+  
+  [2] The impeachment of President Trump and acquitted (02/05)
+  
+  [3] Italy announces nation-wide lockdown due to spike in cases with 630 deaths (03/09) 
+  
+  [4] COVID-19 professed as an international pandemic (03/14)  
+  
+  [5]onset of protests led by the Black Lives Matter movement (05/08)
+  
+  [6] The murder of George Floyd, attention on police brutality (05/25) 
+  
+  [7] Joe Biden’s formal acceptance of the Democratic nomination (08/20)
+  
+  [8] Donald Trump’s formal acceptance of the Republican nomination (08/27)
+  
+  [9] The results of the general election (11/03)
+  
+  [10] The U.S. left the Paris Climate Agreement (11/04) 
+  
+  [11] CCOVID-19 vaccine Rollouts (12/14)  
+
+  An important consideration to mention is that, until April of 2020, Joe Biden was competing against, most notably, Bernie Sanders and Elizabeth Warren, for the Democratic nomination. Consequently, in the team's exclusive comparison between Donald Trump and Joe Biden, all data values prior to the month of April should be examined through the lens of numerous contestants battling for ample market share. The next level of analysis the team conducted was assessing the significance of each stock - compared against both President Donald Trump and Joe Biden. The method used to calculate this was to look at the election/re-election probability of each president against the stock market. As shown below,  
+```{r, include=TRUE}
+
+#Create scatterplot of DJI during 2020
+(temp_lm_plot = ggplot(joint_df2, aes(x = date, y = DJI)) +
+geom_line(alpha = 1.5, color = "Blue") +
+stat_smooth(method = "lm", col = "red") +
+labs(x = "2020",
+y = "DJI",
+title = "Dow Jones Industrial (DJI) - 2020",
+subtitle = "Dip and Bounce of 2020", caption = "Figure 1") +
+theme(legend.position = "none"))+
+geom_vline(xintercept=c(20200121,20200205,20200309,20200314,20200421, 20200525,20200606,20200821,20200820, 20200827,20201020,20201103,20201104, 20201104, 20201214), linetype = "dotted") + theme(panel.background = element_rect(fill = "white"),
+panel.grid.minor = element_line(color = "white"), legend.key = element_rect(fill = "white")) +
+labs(title="Timeline of the DJI in Relation to Key Political Events")
+
+```
+```{r, include = FALSE}
+  #geom_vline(xintercept=20200121, linetype="dashed", color="red") + #First case of Covid-US
+  #geom_vline(xintercept=20200205, linetype="dashed", color="red") + #President Trump Acquitted from Impeachment
+  #geom_vline(xintercept=20200309, linetype="dashed", color="red") + #Rate-hike
+  #geom_vline(xintercept=20200314, linetype="dashed", color="red") + #Covid Declared National Pandemic
+  #geom_vline(xintercept=20200421, linetype="dashed", color="red") + #Crude-Oil Price Plummets
+  #geom_vline(xintercept=20200525, linetype="dashed", color="red") + #Murder of George Floyd - Start of BLM
+  #geom_vline(xintercept=20200821, linetype="dashed", color="red") + #End-ish of BLM/Protests
+  #geom_vline(xintercept=20200121, linetype="dashed", color="red") + #First case of Covid-US
+  #geom_vline(xintercept=20200820, linetype="dashed", color="red") + #Democratic Nomination
+  #geom_vline(xintercept=20200827, linetype="dashed", color="red") + #Republican Nomination
+  #geom_vline(xintercept=20201020, linetype="dashed", color="red") + #Google sued
+  #geom_vline(xintercept=20201103, linetype="dashed", color="red") + Results of General Election 
+  #geom_vline(xintercept=20201104, linetype="dashed", color="red") + Paris Climate Agreement
+  #geom_vline(xintercept=20201104, linetype="dashed", color="red") + End Big Tech Litigations
+  #geom_vline(xintercept=20201214, linetype="dashed", color="red") + COVID Vaccine Rolled Up
+  
+  
+```
+
+```{r, include = FALSE}
+#Define min_max_norm function
+min_max_norm <- function(x) {
+    (x - min(x)) / (max(x) - min(x))
+}
+
+#Remove any rows that have any missing values at all 
+joint_df2_no_missing <- joint_df2[complete.cases(joint_df2),]
+stocks_norm <- as.data.frame(lapply(joint_df2_no_missing[2:45], min_max_norm))
+stocks_norm$date <- joint_df2_no_missing$date
+#Graph the normalized data
+#Dataframe containing all the stocks 
+stocks_norm_for_plot <- stocks_norm
+stocks_norm$close_difference <- stocks_norm$biden.close - stocks_norm$trump.close
+stocks_norm$vol_difference <- stocks_norm$biden.vol - stocks_norm$trump.vol
+```
+
+```{r, include=FALSE}
+ggp1 <- ggplot(stocks_norm, aes(date)) + # Create ggplot2 plot
+geom_line(aes(y = DJI, color = "DJI")) +
+geom_line(aes(y = FB, color = "FB")) +
+geom_line(aes(y = BAC, color = "BAC")) +
+geom_line(aes(y = MLM, color = "MLM")) +
+geom_line(aes(y = NEE, color = "NEE")) +
+geom_line(aes(y = GEO, color = "GEO")) +
+geom_line(aes(y = WMT, color = "WMT")) +
+geom_line(aes(y = CGC, color = "CGC")) +
+geom_line(aes(y = UNH, color = "UNH")) +
+geom_line(aes(y = close_difference, color= "close_difference"), size = 1.2) +
+geom_line(aes(y = vol_difference, color = "vol_difference"), size = 1.2) +
+scale_color_manual(values = c('DJI' = 'grey20',
+'BAC' = 'grey20',
+'FB' = 'firebrick1',
+'MLM' = 'grey40',
+'NEE' = 'grey60',
+'GEO' = 'grey80',
+'WMT' = 'tomato2',
+'CGC' = 'cadetblue4',
+'UNH' = 'royalblue1',
+'close_difference' = 'forestgreen',
+'vol_difference' = 'mediumorchid3')) +
+labs(color= 'Stocks') + theme(panel.background = element_rect(fill = "white"),
+panel.grid.minor = element_line(color = "white"), legend.key = element_rect(fill = "white")) +
+labs(title="Timeline of Stocks with a P-value <= 0.05",
+subtitle="Stocks that were politically influenced in 2020", caption = "Figure 4") + geom_vline(xintercept=c(20200121,20200205,20200309,20200314,20200526,20200605,20200821,20200820, 20200827,20201020,20201103,20201104, 20201214), linetype = "dotted")
+ggp1
+                       # Draw ggplot2 plot
+```
+```{r, include=FALSE}  
+# #apply Min-Max normalization to first four columns in iris dataset
+# stocks_norm <- as.data.frame(lapply(joint_df2[2:35], min_max_norm))
+# stocks_norm$date <- joint_df2$date
+# 
+# 
+# #Graph the normalized data
+# ggp1 <- ggplot(stocks_norm, aes(date)) +       # Create ggplot2 plot
+#   geom_line(aes(y = DJI), color = "red") +
+#   geom_line(aes(y = AAPL), color = "blue")
+# ggp1                                 # Draw ggplot2 plot
+```
+
+<p style="font-family: times, serif; font-size:20pt; font-style:italic">
+ Securities Significance for Each President
+</p>
+
+  The next level of analysis the team conducted was assessing the significance of each stock - comparing both President Donald Trump and Joe Biden. The method used to calculate this was to examine the election/re-election probability of each president against the stock market. Albeit several price metrics were provided, the team chose the closing price of each day as the data points for the studies. For example, with the constructed models, the team can estimate the price of any stock based on the probability of either presidents winning. As shown below, the team conducted linear regression for every stock (including the DJI) to see its associated significance. As shown below, 27 of 30 individual stocks showed to be within our rejection zone (alpha = 0.05). This includes:  AAPL, AMZN, ARCH, AY, BDX, BEP, CAT, EEM, ET, FB, FSLR, GEO, GLDM, GOOGL, LMT, MCD, NEE, NFLX, NYT, O, RSX, TSLA, TWTR, UNH, WKHS, WMT, and XOM.
+```{r, include = FALSE}
+
+#initialize p-value vector outside of the loop
+pvalues <- vector()
+stocknames <- colnames(joint_df2)[2:33]
+
+for(stock in stocknames){
+  eval(parse(text=paste0('model',stock,' <- lm(',stock,'~trump.close, data=joint_df2)')))
+  eval(parse(text=paste0('summary',stock,' <- summary(model',stock,')')))
+  eval(parse(text=paste0('pvalues <- append(pvalues, summary',stock,'$coefficients[,4][2])')))
+}
+
+p_value_df_trump <- data.frame(stocknames, pvalues)
+p_value_df_trump$president <- "Trump"
+
+#Export results to a dataframe
+#Create loop that 
+# runs a summary of the regression models 
+# extracts desired values
+# places values in a matrix 
+
+mat <- matrix(ncol=5)
+for(stock in stocknames){
+  # runs a summary of the regression models
+  eval(parse(text=paste0('model',stock,'_summary <- summary(model',stock,')')))
+  eval(parse(text=paste0('mat <- rbind(mat, c("',stock,'", model',stock,'_summary[["coefficients"]][2,]))')))
+}
+
+
+#Remove first row 
+mat <- mat[-1,]
+#round 
+
+#Put into dataframe and rename first column 
+trump_lm_results <- as.data.frame(mat)
+colnames(trump_lm_results)[1] <- "Stock"
+trump_lm_results[,2:5] <- as.data.frame(lapply(trump_lm_results[,2:5], as.numeric))
+trump_lm_results[,2:4] <- round(trump_lm_results[,2:4],2)
+trump_lm_results[,5] <- round(trump_lm_results[,5],3)
+
+#order from top to bottom
+# colnames(trump_lm_results)<- c("Stock", "Estimate", "Std. Error", "t value", "P-value")
+# trump_lm_results <- trump_lm_results[order("Estimate")]
+```
+
+
+
+
+
+
+
+```{r, include = FALSE}
+kable(trump_lm_results)
+```
+
+  
+
+
+```{r, include = FALSE}
+
+
+pvalues <- vector()
+stocknames <- colnames(joint_df2)[2:33]
+
+for(stock in stocknames){
+  eval(parse(text=paste0('model',stock,' <- lm(',stock,'~biden.close, data=joint_df2)')))
+  eval(parse(text=paste0('summary',stock,' <- summary(model',stock,')')))
+  eval(parse(text=paste0('pvalues <- append(pvalues, summary',stock,'$coefficients[,4][2])')))
+}
+
+
+
+p_value_df_biden <- data.frame(stocknames, pvalues)
+p_value_df_biden$president <- "Biden"
+
+#Row bind the data frames 
+
+p_value_df <- rbind(p_value_df_trump, p_value_df_biden)
+
+
+#Export results to a dataframe
+#Create loop that 
+# runs a summary of the regression models 
+# extracts desired values
+# places values in a matrix 
+
+mat <- matrix(ncol=5)
+for(stock in stocknames){
+  # runs a summary of the regression models
+  eval(parse(text=paste0('model',stock,'_summary <- summary(model',stock,')')))
+  eval(parse(text=paste0('mat <- rbind(mat, c("',stock,'", model',stock,'_summary[["coefficients"]][2,]))')))
+}
+
+
+#Remove first row 
+mat <- mat[-1,]
+#round 
+
+#Put into dataframe and rename first column 
+biden_lm_results <- as.data.frame(mat)
+colnames(biden_lm_results)[1] <- "Stock"
+biden_lm_results[,2:5] <- as.data.frame(lapply(biden_lm_results[,2:5], as.numeric))
+biden_lm_results[,2:4] <- round(biden_lm_results[,2:4],2)
+biden_lm_results[,5] <- round(biden_lm_results[,5],3)
+
+#order from top to bottom
+# colnames(trump_lm_results)<- c("Stock", "Estimate", "Std. Error", "t value", "P-value")
+# trump_lm_results <- trump_lm_results[order("Estimate")]
+```
+```{r, include=FALSE}
+kable(biden_lm_results,
+      caption = "Biden")
+```
+
+```{r, include=TRUE}
+#Create plot 
+fill <- c("Trump", "Biden")
+#Fix the colors and then fix the opacity 
+ggplot(data=p_value_df, aes(x=stocknames, y=pvalues, color=president)) + 
+  geom_bar(stat="identity", position="dodge", alpha=0.8) + xlab("Stock") + ylab("p-value") +
+  ggtitle("P-value by Stock") + 
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(angle=90, vjust=0.5, hjust=1)) + #This centers the title 
+  geom_hline(yintercept=0.05, linetype="dashed", color="red") + #adds horizontal line
+  scale_fill_manual("legend", values = c("Trump" = "red", "Biden" = "blue"))
+
+```
+
+
+```{r, include=TRUE}
+kable(biden_lm_results,
+      caption = "Biden")
+```
+```{r, include=TRUE}
+kable(trump_lm_results)
+```
+<p style="font-family: times, serif; font-size:20pt; font-style:italic">
+  Autocorrelation Adjusted
+</p>
+
+  Next, due to the existence of autocorrelation, the team utilized the Cochrane-Orcutt procedure to re-calculate the associated critical values (shown below). Additionally, in order to eliminate the affect that the candidate’s winning probability would have on individual stocks, the team added an additional variable, DJI, to the regression model. The DJI variable was included to separate the variation in stock prices due to non-politics or COVID-19 related events. As exhibited below, the number of stocks that resulted in significance reduced drastically: 
+
+
+
+
+```{r, include = FALSE}
+#Create the close.difference variable using the joint_df2_no_missing
+joint_df2_no_missing$close.difference <- joint_df2_no_missing$biden.close - joint_df2_no_missing$trump.close
+
+#Create the volume.difference variable using the joint_df2_no_missing
+joint_df2_no_missing$vol.difference <- joint_df2_no_missing$biden.vol - joint_df2_no_missing$trump.vol
+
+#Bring in the normalized DJI from stocks_norm
+joint_df2_no_missing$DJI_normalized <- min_max_norm(joint_df2_no_missing$DJI)
+
+#Min-max normalize these two variables
+joint_df2_no_missing$close.difference_mmn <- min_max_norm(joint_df2_no_missing$close.difference)
+
+joint_df2_no_missing$vol.difference_mmn <- min_max_norm(joint_df2_no_missing$vol.difference)
+```
+
+```{r, include = FALSE}
+#Create line graphs of these values 
+# ggplot(data=joint_df2_no_missing, aes(x=date)) +
+#   geom_line(aes(y = DJI_normalized, colour="DJI")) +
+#   geom_line(aes(y = vol.difference_mmn, colour="var2")) +
+#   geom_line(aes(y = close.difference_mmn, colour="var3")) +
+#   scale_color_manual(name = "Stocks", values = c("DJI" = "darkblue", "var2" = "red", "var3"="black")) +
+#   ggtitle("Normalized stocks") + theme(plot.title = element_text(hjust = 0.5)) +
+#   xlab("Date") + ylab("Normalized values")
+```
+
+
+```{r, include = FALSE}
+##############################Trump##############################
+#initialize p-value vector outside of the loop
+
+
+coch_pvalues <- vector()
+stocknames <- colnames(joint_df2)[2:33]
+
+#We had to remove the stock CAT because the p-value could not be calcaulated 
+stocknames <- stocknames[-c(20,25)]
+
+for(stock in stocknames){
+  eval(parse(text=paste0('model',stock,' <- lm(',stock,'~trump.close, data=joint_df2)')))
+  eval(parse(text=paste0('coch',stock,' <- cochrane.orcutt(model',stock,')')))
+  eval(parse(text=paste0('summary',stock,' <- summary(coch',stock,')')))
+  
+  eval(parse(text=paste0('coch_pvalues <- append(coch_pvalues, summary',stock,'$coefficients[,4][2])')))
+}
+
+p_value_df_trump <- data.frame(stocknames, coch_pvalues)
+p_value_df_trump$president <- "Trump"
+
+# test_summary <- summary(cochDJI)
+
+#Export results to a dataframe
+#Create loop that 
+# runs a summary of the regression models 
+# extracts desired values
+# places values in a matrix 
+
+mat <- matrix(ncol=5)
+for(stock in stocknames){
+  # runs a summary of the regression models
+  eval(parse(text=paste0('model',stock,'_summary <- summary(coch',stock,')')))
+  eval(parse(text=paste0('mat <- rbind(mat, c("',stock,'", model',stock,'_summary[["coefficients"]][2,]))')))
+}
+
+
+#Remove first row 
+mat <- mat[-1,]
+#round 
+
+#Put into dataframe and rename first column 
+trump_lm_results <- as.data.frame(mat)
+colnames(trump_lm_results)[1] <- "Stock"
+trump_lm_results[,2:5] <- as.data.frame(lapply(trump_lm_results[,2:5], as.numeric))
+trump_lm_results[,2:4] <- round(trump_lm_results[,2:4],2)
+trump_lm_results[,5] <- round(trump_lm_results[,5],3)
+
+#order from top to bottom
+# colnames(trump_lm_results)<- c("Stock", "Estimate", "Std. Error", "t value", "P-value")
+# trump_lm_results <- trump_lm_results[order("Estimate")]
+```
+
+```{r, include =FALSE}
+(kable(trump_lm_results, caption = "Trump Cochran"))
+```
+
+```{r, include = FALSE}
+
+
+
+
+##############################Biden##############################
+coch_pvalues <- vector()
+stocknames <- colnames(joint_df2)[2:33]
+stocknames <- stocknames[-c(6,20,25)]
+
+
+for(stock in stocknames){
+  eval(parse(text=paste0('model',stock,' <- lm(',stock,'~biden.close, data=joint_df2)')))
+  eval(parse(text=paste0('coch',stock,' <- cochrane.orcutt(model',stock,')')))
+  eval(parse(text=paste0('summary',stock,' <- summary(coch',stock,')')))
+  
+  eval(parse(text=paste0('coch_pvalues <- append(coch_pvalues, summary',stock,'$coefficients[,4][2])')))
+}
+
+
+p_value_df_biden <- data.frame(stocknames, coch_pvalues)
+p_value_df_biden$president <- "Biden"
+
+#Row bind the data frames 
+
+coch_p_value_df <- rbind(p_value_df_trump, p_value_df_biden)
+
+
+
+
+#Export results to a dataframe
+#Create loop that 
+# runs a summary of the regression models 
+# extracts desired values
+# places values in a matrix 
+
+mat <- matrix(ncol=5)
+for(stock in stocknames){
+  # runs a summary of the regression models
+  eval(parse(text=paste0('model',stock,'_summary <- summary(coch',stock,')')))
+  eval(parse(text=paste0('mat <- rbind(mat, c("',stock,'", model',stock,'_summary[["coefficients"]][2,]))')))
+}
+
+
+#Remove first row 
+mat <- mat[-1,]
+#round 
+
+#Put into dataframe and rename first column 
+biden_lm_results <- as.data.frame(mat)
+colnames(biden_lm_results)[1] <- "Stock"
+biden_lm_results[,2:5] <- as.data.frame(lapply(biden_lm_results[,2:5], as.numeric))
+biden_lm_results[,2:4] <- round(biden_lm_results[,2:4],2)
+biden_lm_results[,5] <- round(biden_lm_results[,5],3)
+
+#order from top to bottom
+# colnames(trump_lm_results)<- c("Stock", "Estimate", "Std. Error", "t value", "P-value")
+# trump_lm_results <- trump_lm_results[order("Estimate")]
+```
+
+```{r, include=FALSE, results="hide"}
+
+kable(biden_lm_results,
+      caption = "Biden Cochran")
+```
+
+```{r, include=TRUE}
+ggplot(data=coch_p_value_df, aes(x=stocknames, y=coch_pvalues, color=president)) + 
+  geom_bar(stat="identity", position="dodge", alpha=0.8) + xlab("Stock") + ylab("Cochran p-value") +
+  ggtitle("Cochran P-value by Stock") + 
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(angle=90, vjust=0.5, hjust=1)) +  
+  geom_hline(yintercept=0.05, linetype="dashed", color="red") +
+  scale_fill_manual("legend", values = c("Trump" = "red", "Biden" = "blue"))
+```
+```{r, include=TRUE}
+
+kable(biden_lm_results,
+      caption = "Biden Cochran")
+```
+```{r, include=TRUE}
+(kable(trump_lm_results, caption = "Trump Cochran"))
+
+
+```
+
+
+  After accounting for the first order autocorrelations using Cochrane-Orcutt estimation, we can see that the time component of the stocks is an important variable to consider when running linear models to examine the associations between closing price of the presidents and the closing price of a stock. After using Cochrane-Orcutt estimation, many of the associations that were previously significant are no longer significant.  
+
+One limitation of this study was not being able to truly use time-series analysis to examine the associations between a president's closing time and the closing price of a stock while taking into account the time variable (date). 
+
+
+<p style="font-family: times, serif; font-size:20pt; font-style:italic">
+ Significant Stocks vs Presidents and Major Events
+</p>
+
+  The final step the team took was to analyze the eight stocks discovered from the previous step. The goal of this was to see the relationship between individual securities against factors related to both Donald Trump and Joe Biden winning the election including: 1. Difference in election probability per day (Biden % - Trump %) described as “Winning % Difference” and 2. Trade-Volume Difference described as “Trade Volume Difference”. As shown in the graph, many of the spikes of 2020 are aligned with some of the major events that occurred, including the "Presidential Impeachment", "BLM movement", and "COVID Vaccine Roll-out" to name a few. In addition, the graph suggests that the market did not initially take comfort in Joe Biden being the likely candidate (shown by the 3rd and 4th vertical line) but as the year went on, the market displayed positive correlation with the likelihood of Vice President Joe Biden being nominated. This is explained by the initial drop in the market when the difference in odds (% change Biden wins - Trump wins) was increasing during that timeframe. The volume difference between the two candidates exhibited no correlation to the probabilities of each winning, nor did it have any correlation with the market. 
+```{r, include = TRUE}
+ggp1  
+  
+```
+<p style="font-family: times, serif; font-size:20pt; font-style:italic">
+ Potential Next Steps
+</p>
+  One key area to improve upon would be to re-evaluate stocks that were unable to be calibrated for autocorrelation (TSLA, CAT, FLSR) due to restrictions in the cochrane.orcutt() function. Furthermore, the team should work to normalize the Closing Share Price for Biden and Trump to bar any additional candidates that adversely affected the presidential market share. 
+
+
+\vspace{0.5 in}
+

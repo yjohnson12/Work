@@ -1,0 +1,206 @@
+---
+title: "Final Project"
+author: "Team 7"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+
+## Preparation
+
+```{r setup, include=TRUE, message = FALSE, warning = FALSE}
+# Load packages used in this session of R
+library(broom)
+library(ggpubr)
+library(tidyverse)
+library(tidyr)
+library(knitr)
+library(dplyr)
+library(readr)
+
+# As needed, set path to folder where data is located.
+opts_knit$set(root.dir = "C:/Users/yusuk/OneDrive/Documents/OPIM601-100/FinalProject")
+#capitalbike <- read_csv("Capital Bike Sharing data by hour.csv", skip = 1)
+capitalbike <- read_csv("Capital Bike Sharing data by hour.csv")
+capitalbike <- capitalbike[,1:17]
+view(capitalbike)
+```
+
+
+
+#### 1) What is the trend in overall bike demand over the months of the year? 
+```{r tidy = FALSE}
+#Plot boxplot per month looking at hourly data points
+capitalbike %>% 
+  ggplot(aes(x = as.factor(mnth), y = cnt)) + 
+  geom_boxplot() + 
+  scale_x_discrete(labels = lubridate::month(1:12, label = T)) + 
+  labs(title = "Bike Rentals Demand (Per Hour) by Month", x = "Month", y = "Bike Rentals Demand")
+```
+
+
+
+#### 2) The data science group at Capital bike share hypothesize that a. There must be high demand during office timings. Early morning and late evening can have different trends (cyclist) and low demand from 10:00pm to 4:00am. Do you agree? 
+```{r tidy = FALSE}
+#Plot boxplot per month looking at hourly data points
+capitalbike %>% 
+  mutate(timeofday = case_when(hr < 5 ~ "Night",
+                               hr < 12 ~ "Morning",
+                               hr < 17 ~ "Afternoon",
+                               hr < 22 ~ "Evening",
+                               TRUE ~ "Night")) %>%
+  ggplot(aes(x = as.factor(hr), y = cnt, fill = timeofday)) + 
+  geom_boxplot() + 
+  scale_x_discrete(breaks = seq(0,22,by=2),labels = paste(seq(0,22,by=2), ":00",sep = "")) + 
+  labs(title = "Bike Rentals Demand by Time of Day", x = "Hour", y = "Bike Rentals Demand")
+
+```
+### B. Registered users demand more bike on weekdays compared to the weekend or holiday. Do you agree? 
+```{r}
+capitalbike %>%
+  ggplot(aes(x = as.factor(workingday), y = Registered, fill = as.factor(workingday))) + 
+  geom_boxplot(show.legend = F) + 
+  labs(title = "Weekday vs Weekend Bike Rentals Demand (Per Hour) for Registered Users",
+       x = "Day of the Week",
+       y = "Bike Rentals Demand for Registered Users") + 
+  scale_x_discrete(labels = c("Weekends", "Weekdays"))
+
+capitalbike %>%
+  ggplot(aes(x = as.factor(holiday), y = Registered, fill = as.factor(holiday))) + 
+  geom_boxplot(show.legend = F) + 
+  labs(title = "Holiday vs Non-Holiday Bike Rentals Demand (Per Hour) for Registered Users",
+       x = "Holiday",
+       y = "Bike Rentals Demand for Registered Users") + 
+  scale_x_discrete(labels = c("No", "Yes"))
+```
+
+### C. Casual users demand more bike on weekdays compared to the weekend or holiday. Do you agree? 
+
+```{r tidy=FALSE}
+capitalbike %>%
+  ggplot(aes(x = as.factor(workingday), y = Casual, fill = as.factor(workingday))) + 
+  geom_boxplot(show.legend = F) + 
+  labs(title = "Weekday vs Weekend Bike Rentals Demand (Per Hour) for Casual Users",
+       x = "Day of the Week",
+       y = "Bike Rentals Demand for Casual Users") + 
+  scale_x_discrete(labels = c("Weekends", "Weekdays"))
+
+capitalbike %>%
+  ggplot(aes(x = as.factor(holiday), y = Casual, fill = as.factor(holiday))) + 
+  geom_boxplot(show.legend = F) + 
+  labs(title = "Holiday vs Non-Holiday Bike Rentals Demand (Per Hour) for Casual Users",
+       x = "Holiday",
+       y = "Bike Rentals Demand for Casual Users") + 
+  scale_x_discrete(labels = c("No", "Yes"))
+```
+
+### 3) Is there any relationship between season and bike rental? Create a visualization displaying the relationship. 
+```{r tidy = FALSE}
+ggplot(capitalbike, aes(x = as.factor(season), y = cnt, fill = as.factor(season))) +
+  geom_boxplot(show.legend = F) + 
+  labs(title = "Bike Rentals (Per Hour) by Season",
+       x = "Season",
+       y = "Bike Rentals Demand") +
+  scale_x_discrete(labels = c("Winter", "Spring", "Summer", "Fall"))
+
+```
+
+
+
+
+### 4) What type of relationship do you see between weather and bike rental? Is the relationship the same for registered vs. casual users? 
+```{r tidy = FALSE}
+
+ggplot(capitalbike, aes(x = as.factor(weathersit), y = cnt, fill = as.factor(weathersit))) +
+  geom_boxplot(show.legend = F) + 
+  labs(title = "Bike Rentals Demand by Weather",
+       x = "Weather",
+       y = "Bike Rentals Demand") +
+  scale_x_discrete(labels = c("Clear", "Misty", "Rainy", "Stormy"))
+
+capitalbike %>%
+  pivot_longer(c("Registered", "Casual")) %>%
+  ggplot(aes(x = as.factor(weathersit), y = value, fill = as.factor(weathersit))) +
+  geom_boxplot(show.legend = F) + 
+  labs(title = "Bike Rentals Demand (Per Hour) by Weather",
+       subtitle = "Faceted by User Type",
+       x = "Weather",
+       y = "Bike Rentals Demand") +
+  scale_x_discrete(labels = c("Clear", "Misty", "Rainy", "Stormy")) + 
+  facet_wrap(~name)
+
+```
+
+
+
+
+#### 5) Fit a linear model predicting the total bike rental demand from daily temperature. What kind of insights can you generate? (make sure to write the linear model and interpret it in the context of the data) 
+
+```{r tidy = FALSE}
+
+#Group by hourly
+capitalbike_dtemp <- capitalbike %>% group_by(dteday) %>% summarize(cnt_daily1 =sum(cnt, na.rm = T),
+                                                                    meantemp1 =mean(temp, na.rm = T)) 
+capitalbike_dtemp
+
+
+#summary(capitalbike_dtemp)
+cor.test(capitalbike_dtemp$cnt_daily1, capitalbike_dtemp$meantemp1)
+
+temp_lm_plot = lm(capitalbike_dtemp$cnt_daily1 ~ capitalbike_dtemp$meantemp1, data = capitalbike_dtemp)
+summary(temp_lm_plot)
+
+
+#Hk new stuff
+mydata <- data.frame(capitalbike[,-2])
+head(mydata)
+cor(mydata)
+round(cor(mydata),3)
+lm_dtemp = lm(cnt ~ ., data = mydata)
+lm_dtemp
+summary(lm_dtemp)
+
+
+(temp_lm_plot = ggplot(capitalbike_dtemp, aes(x = meantemp1, y = cnt_daily1)) +
+  geom_jitter(alpha = 0.10, color = "Black") +
+  stat_smooth(method = "lm", col = "red") +
+  labs(x = "Actual Temperature",
+  y = "Daily Bike Rental Demand",
+  title = "CBS's Demand by Actual Temperature",
+  subtitle = "Positive Correlation Between Higher Temp and Demand") +
+  theme(legend.position = "none"))
+```
+
+
+
+#### 6) Fit another linear model predicting total daily bike rentals from daily feeling temperature. Write the linear model, interpret the slope, etc. Is the temperature or feeling temperature a better predictor of bike rentals? 
+```{r tidy = FALSE}
+
+capitalbike_ftemp <- capitalbike %>% group_by(dteday) %>% summarize(cnt_daily2 =sum(cnt, na.rm = T),
+                                                                    meantemp2 =mean(atemp, na.rm = T))
+capitalbike_ftemp
+summary(capitalbike_ftemp)
+cor.test(capitalbike_ftemp$cnt_daily2, capitalbike_ftemp$meantemp2)
+
+
+feeltemp_lm = lm(capitalbike_ftemp$cnt_daily2 ~ capitalbike_ftemp$meantemp2, data = capitalbike_ftemp)
+summary(feeltemp_lm)
+(feeltemp_lm = ggplot(capitalbike_ftemp, aes(x = meantemp2, y = cnt_daily2)) + 
+    geom_jitter(alpha = 0.10, color = "Black") +
+    stat_smooth(method = "lm", col = "red") +
+    labs(x = "Feels-Temperature",
+         y = "Daily Bike Rental Demand",
+         title = "CBS’s Demand by Feels-Temperature",
+         subtitle = "Positive Correlation Between Higher Feels-Temperature and Demand") +
+    theme(legend.position = "none"))
+
+```
+
+
+
+#### 7) What is your overall recommendation about the demand for bike rentals for the Capital Bike Share management? Share your insights with the company based on your analysis. 
+```{r tidy = FALSE}
+
+
+```
